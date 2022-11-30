@@ -1,24 +1,100 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"net"
+	"net/http"
+	"time"
 )
 
 const ES_DEFAULT_PORT = 9200
 const NO_DICE = "No dice"
 
-func worker(addresses []string, results chan string) {
+type ESCluster struct {
+	Name         string
+	Address      string
+	Cluster_Name string
+	ClusterUuid  string
+	Version      struct {
+		Number      string
+		BuildFlavor string
+		BuildType   string
+	}
+}
+
+func worker(addresses <-chan string, results chan ESCluster) {
+	var nilCluster = ESCluster{}
+
 	for ip := range addresses {
-		address := fmt.Sprintf("%d:%d", ip, ES_DEFAULT_PORT)
-		conn, err := net.Dial("tcp", address)
+
+		_, err := Dial(ip)
 		if err != nil {
-			results <- NO_DICE
+			results <- nilCluster
 			continue
 		}
-		conn.Close()
-		results <- address
+
+		clusterDetails, err := Login(ip)
+
+		if err != nil {
+			results <- nilCluster
+			continue
+		}
+
+		results <- clusterDetails
 	}
+}
+
+func Dial(ip string) (string, error) {
+	log.Println("Attempting to dial", ip)
+	address := fmt.Sprintf("%s:%d", ip, ES_DEFAULT_PORT)
+
+	d := net.Dialer{Timeout: 1 * time.Second}
+	conn, err := d.Dial("tcp", address)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer conn.Close()
+
+	return "ok", nil
+}
+
+func Login(host string) (ESCluster, error) {
+	log.Println("Attempting to get cluster details for", host)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", "http://"+host+":9200", nil)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req.SetBasicAuth("elastic", "changeme")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var es_cluster ESCluster
+	es_cluster.Address = host
+
+	error := json.NewDecoder(resp.Body).Decode(&es_cluster)
+
+	if error != nil {
+		log.Fatal(err)
+	}
+
+	resp.Body.Close()
+
+	if resp.Status != "200 OK" {
+		return es_cluster, errors.New("Login failed")
+	}
+
+	return es_cluster, nil
 }
 
 func Hosts(cidr string) ([]string, error) {
@@ -55,26 +131,37 @@ func main() {
 
 	fmt.Println("Scanning", len(hosts), "hosts")
 
-	results := make(chan string)
-	var public_instances []string
-
-	for i := 0; i < cap(hosts); i++ {
-		go worker(hosts, results)
+	addresses := make(chan string, len(hosts))
+	for _, host := range hosts {
+		addresses <- host
 	}
 
-	for i := 0; i < cap(hosts); i++ {
-		host := <-results
-		if host != NO_DICE {
-			public_instances = append(public_instances, host)
+	results := make(chan ESCluster)
+	var public_instances []ESCluster
+
+	for i := 0; i < 20; i++ {
+		go worker(addresses, results)
+	}
+
+	close(addresses)
+
+	for i := 0; i < len(hosts); i++ {
+		instance := <-results
+
+		if instance.Name != "" {
+			public_instances = append(public_instances, instance)
 		}
 	}
 
 	close(results)
-	for _, ip := range public_instances {
-		fmt.Printf("%s running service on port %d\n", ip, ES_DEFAULT_PORT)
+
+	fmt.Println("Found", len(public_instances), "public instances")
+
+	for _, instance := range public_instances {
+		log.Printf("cluster %s (v%s) is open (%s)\n", instance.Cluster_Name, instance.Version.Number, instance.Address)
 	}
 
 	if len(public_instances) == 0 {
-		fmt.Println("No public instances found")
+		log.Println("No public instances found")
 	}
 }
