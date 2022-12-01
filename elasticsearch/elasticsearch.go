@@ -1,17 +1,16 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
+	"os"
 	"time"
 )
 
 const ES_DEFAULT_PORT = 9200
 const NO_DICE = "No dice"
+
+var logFileDir = "scans"
 
 type ESCluster struct {
 	Name         string
@@ -30,7 +29,7 @@ func worker(addresses <-chan string, results chan ESCluster) {
 
 	for ip := range addresses {
 
-		_, err := Dial(ip)
+		_, err := Dial(ip, ES_DEFAULT_PORT)
 		if err != nil {
 			results <- nilCluster
 			continue
@@ -43,93 +42,32 @@ func worker(addresses <-chan string, results chan ESCluster) {
 			continue
 		}
 
+		log.Printf("cluster %s (v%s) is open (%s)\n", clusterDetails.Cluster_Name, clusterDetails.Version.Number, clusterDetails.Address)
 		results <- clusterDetails
 	}
 }
 
-func Dial(ip string) (string, error) {
-	log.Println("Attempting to dial", ip)
-	address := fmt.Sprintf("%s:%d", ip, ES_DEFAULT_PORT)
-
-	d := net.Dialer{Timeout: 1 * time.Second}
-	conn, err := d.Dial("tcp", address)
-
+func initLogFile(dir string) {
+	filename := fmt.Sprintf("%s/elasticsearch-scan-%s.log", dir, time.Now())
+	logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return "", err
+		log.Fatalf("error opening file: %v", err)
 	}
-
-	defer conn.Close()
-
-	return "ok", nil
-}
-
-func Login(host string) (ESCluster, error) {
-	log.Println("Attempting to get cluster details for", host)
-
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", "http://"+host+":9200", nil)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	req.SetBasicAuth("elastic", "changeme")
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var es_cluster ESCluster
-	es_cluster.Address = host
-
-	error := json.NewDecoder(resp.Body).Decode(&es_cluster)
-
-	if error != nil {
-		log.Fatal(err)
-	}
-
-	resp.Body.Close()
-
-	if resp.Status != "200 OK" {
-		return es_cluster, errors.New("Login failed")
-	}
-
-	return es_cluster, nil
-}
-
-func Hosts(cidr string) ([]string, error) {
-	ip, ipnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil, err
-	}
-
-	var ips []string
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		ips = append(ips, ip.String())
-	}
-
-	// remove network address and broadcast address
-	return ips[1 : len(ips)-1], nil
-}
-
-func inc(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
-	}
+	log.SetOutput(logFile)
 }
 
 func main() {
+	initLogFile(logFileDir)
+
 	var cidr_to_scan string
 
+	// do this as command line args instead
 	fmt.Print("Enter CIDR to scan: ")
 	fmt.Scanln(&cidr_to_scan)
 
 	hosts, _ := Hosts(cidr_to_scan)
 
-	fmt.Println("Scanning", len(hosts), "hosts")
+	fmt.Println("Scanning", len(hosts), "hosts in CIDR", cidr_to_scan)
 
 	addresses := make(chan string, len(hosts))
 	for _, host := range hosts {
@@ -164,4 +102,6 @@ func main() {
 	if len(public_instances) == 0 {
 		log.Println("No public instances found")
 	}
+
+	os.Exit(0)
 }

@@ -23,6 +23,18 @@ func TestHosts(t *testing.T) {
 	}
 }
 
+func TestDial(t *testing.T) {
+	var localhost string = "127.0.0.1"
+	result, err := Dial(localhost, 9200)
+
+	if err != nil && result != "" {
+		t.Fatalf(`Dial(localhost) result was %s, want empty string`, result)
+	}
+
+	if result == "ok" && err != nil {
+		t.Fatalf(`Dial("localhost") error was %v, want nil`, err)
+	}
+}
 func BenchmarkHosts(b *testing.B) {
 }
 
