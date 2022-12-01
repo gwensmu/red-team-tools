@@ -6,9 +6,6 @@ import (
 
 func TestHosts(t *testing.T) {
 	hosts, err := Hosts("127.0.0.1/30")
-	if err != nil {
-		t.Error(err)
-	}
 
 	if hosts[0] != "127.0.0.1" || err != nil {
 		t.Fatalf(`Hosts("127.0.0.1/30")[0] = %q, %v, want "127.0.0.1", nil`, hosts[0], err)
@@ -25,12 +22,13 @@ func TestHosts(t *testing.T) {
 
 func TestDial(t *testing.T) {
 	var localhost string = "127.0.0.1"
-	result, err := Dial(localhost, 9200)
+	result, err := Dial(localhost, 80)
 
 	if err != nil && result != "" {
 		t.Fatalf(`Dial(localhost) result was %s, want empty string`, result)
 	}
 
+	// need to setup context to test this
 	if result == "ok" && err != nil {
 		t.Fatalf(`Dial("localhost") error was %v, want nil`, err)
 	}

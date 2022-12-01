@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -59,48 +60,58 @@ func initLogFile(dir string) {
 func main() {
 	initLogFile(logFileDir)
 
-	var cidr_to_scan string
+	blockPtr := flag.String("block", "", "a IPv4 CIDR block to scan")
+	cloudProviderPtr := flag.String("cloud", "aws", "the cloud provider to scan (aws/gce)")
+	regionPtr := flag.String("region", "us-east1", "the region to scan")
 
-	// do this as command line args instead
-	fmt.Print("Enter CIDR to scan: ")
-	fmt.Scanln(&cidr_to_scan)
+	flag.Parse()
 
-	hosts, _ := Hosts(cidr_to_scan)
+	var cidrs_to_scan []string
 
-	fmt.Println("Scanning", len(hosts), "hosts in CIDR", cidr_to_scan)
-
-	addresses := make(chan string, len(hosts))
-	for _, host := range hosts {
-		addresses <- host
+	if *blockPtr != "" {
+		cidrs_to_scan = []string{*blockPtr}
+	} else {
+		cidrs_to_scan = GetCIDR(*cloudProviderPtr, *regionPtr)
 	}
 
-	results := make(chan ESCluster)
-	var public_instances []ESCluster
+	for _, block := range cidrs_to_scan {
+		hosts, _ := Hosts(block)
 
-	for i := 0; i < 20; i++ {
-		go worker(addresses, results)
-	}
+		log.Println("Scanning", len(hosts), "hosts in CIDR", block)
 
-	close(addresses)
-
-	for i := 0; i < len(hosts); i++ {
-		instance := <-results
-
-		if instance.Name != "" {
-			public_instances = append(public_instances, instance)
+		addresses := make(chan string, len(hosts))
+		for _, host := range hosts {
+			addresses <- host
 		}
-	}
 
-	close(results)
+		results := make(chan ESCluster)
+		var public_instances []ESCluster
 
-	fmt.Println("Found", len(public_instances), "public instances")
+		for i := 0; i < 20; i++ {
+			go worker(addresses, results)
+		}
 
-	for _, instance := range public_instances {
-		log.Printf("cluster %s (v%s) is open (%s)\n", instance.Cluster_Name, instance.Version.Number, instance.Address)
-	}
+		close(addresses)
 
-	if len(public_instances) == 0 {
-		log.Println("No public instances found")
+		for i := 0; i < len(hosts); i++ {
+			instance := <-results
+
+			if instance.Name != "" {
+				public_instances = append(public_instances, instance)
+			}
+		}
+
+		close(results)
+
+		fmt.Println("Found", len(public_instances), "public instances")
+
+		for _, instance := range public_instances {
+			log.Printf("cluster %s (v%s) is open (%s)\n", instance.Cluster_Name, instance.Version.Number, instance.Address)
+		}
+
+		if len(public_instances) == 0 {
+			log.Println("No public instances found")
+		}
 	}
 
 	os.Exit(0)
