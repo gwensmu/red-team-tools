@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"io"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/aquasecurity/esquery"
 	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 )
 
 func Login(host string) (ESCluster, error) {
@@ -38,36 +37,17 @@ func Login(host string) (ESCluster, error) {
 		log.Fatalf("Failed creating client: %s", err)
 	}
 
-	// todo: better default query
 	GetIndexes(es)
 
 	return es_cluster, nil
 }
 
 func GetIndexes(es *elasticsearch.Client) {
-	// run a boolean search query
-	res, err := esquery.Search().
-		Query(
-			esquery.
-				Bool().
-				Must(esquery.Term("title", "Go and Stuff")).
-				Filter(esquery.Term("tag", "tech")),
-		).
-		Aggs(
-			esquery.Avg("average_score", "score"),
-			esquery.Max("max_score", "score"),
-		).
-		Size(20).
-		Run(
-			es,
-			es.Search.WithContext(context.TODO()),
-			es.Search.WithIndex("test"),
-		)
+	res, err := esapi.CatIndicesRequest{Format: "json"}.Do(context.Background(), es)
 	if err != nil {
-		log.Fatalf("Failed searching for stuff: %s", err)
+		return
 	}
-
-	// ensure that we conseme the response body
-	io.Copy(ioutil.Discard, res.Body)
 	defer res.Body.Close()
+
+	fmt.Println(res.String())
 }
