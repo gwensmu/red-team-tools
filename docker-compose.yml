@@ -23,6 +23,12 @@ services:
       retries: 3
     networks:
       - elastic
+  datascience-notebook:
+    image: jupyter/datascience-notebook
+    volumes:
+      - .:/home/joyvan/work
+    ports:
+      - "8888:8888"
 networks:
   elastic:
     driver: bridge
