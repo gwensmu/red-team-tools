@@ -5,8 +5,6 @@
 * `http://+host+:9200/_cat/indices/my-index-*?v=true&s=index&pretty`
 * add flag for number of workers
 * keep track of stopping point of ranges scanned, so process can be resumed
-<<<<<<< HEAD
-=======
 * filter out the node indexers
 
 ```
@@ -30,7 +28,6 @@ so doing KEYS * is fun
 
 
 ```
->>>>>>> gs/es-scanner
 
 ## Use
 
