@@ -43,7 +43,7 @@ func GetGCEPrefixes(region string) []string {
 
 	var prefixes []string
 
-	// filter on region first for clarity
+	// todo: filter on region first for clarity
 	for _, prefix := range blocks.Prefixes {
 		if prefix.Scope == region && prefix.IPv4Prefix != "" {
 			prefixes = append(prefixes, prefix.IPv4Prefix)
