@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-<<<<<<< HEAD
-=======
 	"time"
->>>>>>> gs/es-scanner
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
@@ -20,16 +17,11 @@ func Login(host string) (ESCluster, error) {
 	var es_cluster ESCluster
 	es_cluster.Address = host
 
-<<<<<<< HEAD
-	_, err := http.NewRequest("GET", "http://"+host+":9200", nil)
-
-=======
 	client := &http.Client{
 		Timeout: time.Second * 1,
 	}
 
 	req, err := http.NewRequest("GET", "http://"+host+":9200", nil)
->>>>>>> gs/es-scanner
 	if err != nil {
 		log.Print(err)
 		return es_cluster, err
