@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+<<<<<<< HEAD
+=======
+	"time"
+>>>>>>> gs/es-scanner
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
@@ -16,17 +20,33 @@ func Login(host string) (ESCluster, error) {
 	var es_cluster ESCluster
 	es_cluster.Address = host
 
+<<<<<<< HEAD
 	_, err := http.NewRequest("GET", "http://"+host+":9200", nil)
 
+=======
+	client := &http.Client{
+		Timeout: time.Second * 1,
+	}
+
+	req, err := http.NewRequest("GET", "http://"+host+":9200", nil)
+>>>>>>> gs/es-scanner
 	if err != nil {
 		log.Print(err)
 		return es_cluster, err
 	}
 
+	req.SetBasicAuth("elastic", "changeme")
+	response, err := client.Do(req)
+	if err != nil {
+		log.Printf("Basic Auth failed for host %s: %s", host, err)
+		return es_cluster, err
+	}
+	defer response.Body.Close()
+
 	cfg := elasticsearch.Config{
 		Addresses: []string{
-			"https://" + host + ":9200",
-			"https://" + host + ":9201",
+			"http://" + host + ":9200",
+			"http://" + host + ":9201",
 		},
 		Username: "elastic",
 		Password: "changeme",
@@ -37,17 +57,18 @@ func Login(host string) (ESCluster, error) {
 		log.Fatalf("Failed creating client: %s", err)
 	}
 
-	GetIndexes(es)
+	indexes := GetIndexes(es)
+	log.Println(host + " has indexes:\n" + indexes)
 
 	return es_cluster, nil
 }
 
-func GetIndexes(es *elasticsearch.Client) {
-	res, err := esapi.CatIndicesRequest{Format: "json"}.Do(context.Background(), es)
+func GetIndexes(es *elasticsearch.Client) string {
+	res, err := esapi.CatIndicesRequest{Pretty: true}.Do(context.Background(), es)
 	if err != nil {
-		return
+		return fmt.Sprintf("Error getting indexes: %s", err)
 	}
 	defer res.Body.Close()
 
-	fmt.Println(res.String())
+	return res.String()
 }
