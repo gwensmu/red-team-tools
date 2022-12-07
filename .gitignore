@@ -2,4 +2,4 @@
 elasticsearch/scans/
 elasticsearch
 redis/scans/
-redis
+**/bin

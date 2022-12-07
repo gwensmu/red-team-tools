@@ -2,10 +2,10 @@
 
 ## Use
 
-`go build`
+`go build -o bin/$(basename $(pwd))`
 
-`./redis --block 127.0.0.1/30`
-`./redis --cloud gce --region us-east1`
+`./bin/redis --block 127.0.0.1/30`
+`./bin/redis --cloud gce --region us-east1`
 
 ## Tests
 

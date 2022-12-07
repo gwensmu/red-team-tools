@@ -2,10 +2,10 @@
 
 ## Use
 
-`go build`
+`go build -o bin/$(basename $(pwd))`
 
-`./elasticsearch --block 127.0.0.1/30`
-`./elasticsearch --cloud gce --region us-east1`
+`./bin/elasticsearch --block 127.0.0.1/30`
+`./bin/elasticsearch --cloud gce --region us-east1`
 
 ## Tests
 
