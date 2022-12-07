@@ -1,4 +1,4 @@
-module elasticsearch
+module red-team-tools/elasticsearch
 
 go 1.19
 

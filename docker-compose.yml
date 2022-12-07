@@ -1,4 +1,12 @@
 services:
+  redis:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    volumes: 
+      - cache:/data
   elasticsearch:
     image: elasticsearch:7.16.1
     container_name: es
@@ -18,3 +26,6 @@ services:
 networks:
   elastic:
     driver: bridge
+volumes:
+  cache:
+    driver: local

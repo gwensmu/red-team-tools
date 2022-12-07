@@ -1,4 +1,4 @@
-package main
+package net_helpers
 
 import (
 	"testing"

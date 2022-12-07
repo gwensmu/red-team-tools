@@ -9,48 +9,41 @@ import (
 	"time"
 )
 
-const ES_DEFAULT_PORT = 9200
+const REDIS_DEFAULT_PORT = 6379
 const NO_DICE = "No dice"
 
 var logFileDir = "scans"
 
-type ESCluster struct {
-	Name         string
-	Address      string
-	Cluster_Name string
-	ClusterUuid  string
-	Version      struct {
-		Number      string
-		BuildFlavor string
-		BuildType   string
-	}
+type RedisInstance struct {
+	Name    string
+	Address string
 }
 
-func worker(addresses <-chan string, results chan ESCluster) {
-	var nilCluster = ESCluster{}
+func worker(addresses <-chan string, results chan RedisInstance) {
+	var nilInstance = RedisInstance{}
 
 	for ip := range addresses {
 
-		_, err := net_helpers.Dial(ip, ES_DEFAULT_PORT)
+		_, err := net_helpers.Dial(ip, REDIS_DEFAULT_PORT)
 		if err != nil {
-			results <- nilCluster
+			results <- nilInstance
 			continue
 		}
 
-		clusterDetails, err := Login(ip)
+		instanceDetails, err := GetKeys(ip)
 
 		if err != nil {
-			results <- nilCluster
+			results <- nilInstance
 			continue
 		}
 
-		log.Printf("cluster %s (v%s) is open (%s)\n", clusterDetails.Cluster_Name, clusterDetails.Version.Number, clusterDetails.Address)
-		results <- clusterDetails
+		log.Printf("Instance %s is open\n", instanceDetails.Address)
+		results <- instanceDetails
 	}
 }
 
 func initLogFile(dir string) {
-	filename := fmt.Sprintf("%s/elasticsearch-scan-%s.log", dir, time.Now())
+	filename := fmt.Sprintf("%s/redis-scan-%s.log", dir, time.Now())
 	logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
@@ -85,8 +78,8 @@ func main() {
 			addresses <- host
 		}
 
-		results := make(chan ESCluster)
-		var public_instances []ESCluster
+		results := make(chan RedisInstance)
+		var public_instances []RedisInstance
 
 		for i := 0; i < 20; i++ {
 			go worker(addresses, results)
@@ -104,7 +97,7 @@ func main() {
 
 		close(results)
 
-		fmt.Println("Found", len(public_instances), "public instances")
+		fmt.Println("Found", len(public_instances), "public redis instances")
 	}
 
 	os.Exit(0)
