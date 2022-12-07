@@ -1,4 +1,15 @@
-# red-team-tools
+# red-team-tools/elasticsearch
+
+## Use
+
+`go build`
+
+`./elasticsearch --block 127.0.0.1/30`
+`./elasticsearch --cloud gce --region us-east1`
+
+## Tests
+
+`go test -v`
 
 # features to add
 
@@ -28,14 +39,3 @@ so doing KEYS * is fun
 
 
 ```
-
-## Use
-
-`go build`
-
-`elasticsearch --block 127.0.0.1/30`
-`./elasticsearch --cloud gce --region us-east1`
-
-## Tests
-
-`go test -v`

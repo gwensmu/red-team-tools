@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net_helpers"
 	"os"
 	"time"
 )
@@ -30,7 +31,7 @@ func worker(addresses <-chan string, results chan ESCluster) {
 
 	for ip := range addresses {
 
-		_, err := Dial(ip, ES_DEFAULT_PORT)
+		_, err := net_helpers.Dial(ip, ES_DEFAULT_PORT)
 		if err != nil {
 			results <- nilCluster
 			continue
@@ -71,11 +72,11 @@ func main() {
 	if *blockPtr != "" {
 		cidrs_to_scan = []string{*blockPtr}
 	} else {
-		cidrs_to_scan = GetCIDR(*cloudProviderPtr, *regionPtr)
+		cidrs_to_scan = net_helpers.GetCIDR(*cloudProviderPtr, *regionPtr)
 	}
 
 	for _, block := range cidrs_to_scan {
-		hosts, _ := Hosts(block)
+		hosts, _ := net_helpers.Hosts(block)
 
 		log.Println("Scanning", len(hosts), "hosts in CIDR", block)
 
@@ -104,14 +105,6 @@ func main() {
 		close(results)
 
 		fmt.Println("Found", len(public_instances), "public instances")
-
-		for _, instance := range public_instances {
-			log.Printf("cluster %s (v%s) is open (%s)\n", instance.Cluster_Name, instance.Version.Number, instance.Address)
-		}
-
-		if len(public_instances) == 0 {
-			log.Println("No public instances found")
-		}
 	}
 
 	os.Exit(0)

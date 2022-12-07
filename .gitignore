@@ -1,3 +1,5 @@
 .vscode
 elasticsearch/scans/
 elasticsearch
+redis/scans/
+redis

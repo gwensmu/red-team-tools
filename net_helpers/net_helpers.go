@@ -1,4 +1,4 @@
-package main
+package net_helpers
 
 import (
 	"fmt"
@@ -44,3 +44,5 @@ func inc(ip net.IP) {
 		}
 	}
 }
+
+func main() {}
