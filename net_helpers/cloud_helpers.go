@@ -6,8 +6,44 @@ import (
 	"net/http"
 )
 
+type AWSPrefix struct {
+	IPPrefix string `json:"ip_prefix"`
+	Service  string `json:"service"`
+	Region   string `json:"region"`
+}
+
+type AWSPrefixes struct {
+	Prefixes []AWSPrefix `json:"prefixes"`
+}
+
 func GetAWSCIDRs(region string) []string {
-	return []string{"hork"}
+	req, err := http.NewRequest("GET", "https://ip-ranges.amazonaws.com/ip-ranges.json", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, _ := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var blocks AWSPrefixes
+	d := json.NewDecoder(res.Body)
+	d.Decode(&blocks)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var prefixes []string
+
+	for _, prefix := range blocks.Prefixes {
+		if prefix.Region == region {
+			prefixes = append(prefixes, prefix.IPPrefix)
+		}
+	}
+
+	return prefixes
 }
 
 type GCEPrefix struct {
