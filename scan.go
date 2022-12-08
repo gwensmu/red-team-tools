@@ -30,11 +30,13 @@ func esScan(ip string, esResults chan es.ESCluster) {
 	_, err := net_helpers.Dial(ip, ES_DEFAULT_PORT)
 	if err != nil {
 		esResults <- nilESCluster
+		return
 	} else {
 		clusterDetails, err := es.Login(ip)
 
 		if err != nil {
 			esResults <- nilESCluster
+			return
 		}
 
 		esLog.Printf("cluster %s (v%s) is open (%s)\n", clusterDetails.Cluster_Name, clusterDetails.Version.Number, clusterDetails.Address)
@@ -48,11 +50,13 @@ func redisScan(ip string, redisResults chan redis.RedisInstance) {
 	_, err := net_helpers.Dial(ip, REDIS_DEFAULT_PORT)
 	if err != nil {
 		redisResults <- nilRedisInstance
+		return
 	} else {
 		instanceDetails, err := redis.GetKeys(ip)
 
 		if err != nil {
 			redisResults <- nilRedisInstance
+			return
 		}
 
 		redisLog.Printf("Instance %s is open\n", instanceDetails.Address)
@@ -66,11 +70,13 @@ func jupyterScan(ip string, jupyterResults chan jupyter.JupyterInstance) {
 	_, err := net_helpers.Dial(ip, JUPYTER_DEFAULT_PORT)
 	if err != nil {
 		jupyterResults <- nilJupyterInstance
+		return
 	} else {
 		instanceDetails, err := jupyter.GetAPIStatus(ip)
 
 		if err != nil {
 			jupyterResults <- nilJupyterInstance
+			return
 		}
 
 		jupyterLog.Printf("Notebook %s is open\n", instanceDetails.Address)
@@ -80,10 +86,16 @@ func jupyterScan(ip string, jupyterResults chan jupyter.JupyterInstance) {
 
 func worker(addresses <-chan string, esResults chan es.ESCluster, redisResults chan redis.RedisInstance, jupyterResults chan jupyter.JupyterInstance) {
 	for ip := range addresses {
-		mainLog.Printf("Scanning %s", ip)
-		esScan(ip, esResults)
-		redisScan(ip, redisResults)
-		jupyterScan(ip, jupyterResults)
+		go func() {
+			esScan(ip, esResults)
+		}()
+		go func() {
+			redisScan(ip, redisResults)
+		}()
+		go func() {
+			jupyterScan(ip, jupyterResults)
+		}()
+		continue
 	}
 }
 
