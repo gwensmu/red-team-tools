@@ -80,6 +80,7 @@ func jupyterScan(ip string, jupyterResults chan jupyter.JupyterInstance) {
 
 func worker(addresses <-chan string, esResults chan es.ESCluster, redisResults chan redis.RedisInstance, jupyterResults chan jupyter.JupyterInstance) {
 	for ip := range addresses {
+		mainLog.Printf("Scanning %s", ip)
 		esScan(ip, esResults)
 		redisScan(ip, redisResults)
 		jupyterScan(ip, jupyterResults)
@@ -136,10 +137,42 @@ func main() {
 			go worker(addresses, esResults, redisResults, jupyterResults)
 		}
 
+		var public_es_instances []es.ESCluster
+		var public_redis_instances []redis.RedisInstance
+		var public_jupyter_instances []jupyter.JupyterInstance
+
+		for i := 0; i < len(hosts); i++ {
+			instance := <-esResults
+
+			if instance.Name != "" {
+				public_es_instances = append(public_es_instances, instance)
+			}
+		}
+
+		for i := 0; i < len(hosts); i++ {
+			instance := <-redisResults
+
+			if instance.Name != "" {
+				public_redis_instances = append(public_redis_instances, instance)
+			}
+		}
+
+		for i := 0; i < len(hosts); i++ {
+			instance := <-jupyterResults
+
+			if instance.Name != "" {
+				public_jupyter_instances = append(public_jupyter_instances, instance)
+			}
+		}
+
 		close(addresses)
 		close(esResults)
 		close(jupyterResults)
 		close(redisResults)
+
+		fmt.Println("Found", len(public_es_instances), "public Elasticsearch instances")
+		fmt.Println("Found", len(public_redis_instances), "public Redis instances")
+		fmt.Println("Found", len(public_jupyter_instances), "public jupyter notebooks")
 	}
 
 	os.Exit(0)
