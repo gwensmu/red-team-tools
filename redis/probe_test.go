@@ -1,4 +1,4 @@
-package rtt_redis
+package main
 
 import (
 	"testing"

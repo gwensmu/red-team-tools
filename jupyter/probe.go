@@ -1,4 +1,4 @@
-package rtt_jupyter
+package main
 
 import (
 	"fmt"

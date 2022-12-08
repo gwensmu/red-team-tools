@@ -1,4 +1,4 @@
-package rtt_elasticsearch
+package main
 
 import (
 	"testing"
