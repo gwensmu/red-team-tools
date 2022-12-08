@@ -1,4 +1,4 @@
-package main
+package rtt_redis
 
 import (
 	"flag"
