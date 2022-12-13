@@ -6,5 +6,5 @@ cd ..
 docker-compose down
 docker-compose up -d &
 cd elasticsearch
-go build -o bin/$(basename $(pwd))
+make build
 ./bin/elasticsearch --block 127.0.0.1/30
