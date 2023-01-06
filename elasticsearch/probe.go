@@ -10,6 +10,9 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 )
 
+const ES_DEFAULT_USERNAME = "elastic"
+const ES_DEFAULT_PASSWORD = "changeme"
+
 func Login(host string) (ESCluster, error) {
 	log.Println("Attempting to get cluster details for", host)
 
@@ -27,8 +30,8 @@ func Login(host string) (ESCluster, error) {
 			"http://" + host + ":9200",
 			"http://" + host + ":9201",
 		},
-		Username: "elastic",
-		Password: "changeme",
+		Username: ES_DEFAULT_USERNAME,
+		Password: ES_DEFAULT_PASSWORD,
 	}
 
 	es, err := elasticsearch.NewClient(cfg)
@@ -36,23 +39,27 @@ func Login(host string) (ESCluster, error) {
 		log.Fatalf("Failed creating client: %s", err)
 	}
 
-	indexes := GetIndexes(es, host)
-	log.Println(host + " has indexes:\n" + indexes)
-
-	return es_cluster, nil
+	indexes, err := GetIndexes(es, host)
+	if err != nil {
+		log.Printf("Failed getting indexes: %s", err)
+		return es_cluster, err
+	} else {
+		log.Println(host + " has indexes:\n" + indexes)
+		return es_cluster, nil
+	}
 }
 
-func GetIndexes(es *elasticsearch.Client, host string) string {
+func GetIndexes(es *elasticsearch.Client, host string) (string, error) {
 	res, err := esapi.CatIndicesRequest{Pretty: true}.Do(context.Background(), es)
 	if err != nil {
-		return fmt.Sprintf("Error getting indexes: %s", err)
+		return fmt.Sprintf("Error getting indexes: %s", err), err
 	}
 
 	if res.Status() == "401" {
-		return fmt.Sprintf("401 Unauthorized: %s", host)
+		return fmt.Sprintf("401 Unauthorized: %s", host), err
 	}
 
 	defer res.Body.Close()
 
-	return res.String()
+	return res.String(), err
 }
