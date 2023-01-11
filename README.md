@@ -1,5 +1,7 @@
 # Red Team Tools
 
+Simple scanners to identify open elasticsearch instances, redis instances, and jupyter notebooks.
+
 For e2e tests
 
 ```
