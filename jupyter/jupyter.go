@@ -57,6 +57,7 @@ func main() {
 	blockPtr := flag.String("block", "", "a IPv4 CIDR block to scan")
 	cloudProviderPtr := flag.String("cloud", "aws", "the cloud provider to scan (aws/gce)")
 	regionPtr := flag.String("region", "us-east1", "the region to scan")
+	workerPtr := flag.Int("workers", 20, "the number of workers to use")
 
 	flag.Parse()
 
@@ -81,7 +82,7 @@ func main() {
 		results := make(chan JupyterInstance)
 		var public_instances []JupyterInstance
 
-		for i := 0; i < 20; i++ {
+		for i := 0; i < *workerPtr; i++ {
 			go worker(addresses, results)
 		}
 

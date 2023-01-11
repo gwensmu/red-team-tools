@@ -11,5 +11,4 @@ For e2e tests
 
 # todos
 
-* add flag for number of workers
 * keep track of stopping point of ranges scanned, so process can be resumed
