@@ -9,16 +9,16 @@ import (
 	"github.com/hasura/go-graphql-client"
 )
 
-type ArgsQuery struct {
+var query struct {
 	__Schema struct {
 		Types struct {
-			Name   graphql.String
+			Name   string
 			Fields struct {
-				Name graphql.String
+				Name string
 				Args struct {
-					Name graphql.String
+					Name string
 					Type struct {
-						Name graphql.String
+						Name string
 					}
 				}
 			}
@@ -26,23 +26,28 @@ type ArgsQuery struct {
 	}
 }
 
-func probe(endpoint string) (e error) {
+func Probe(endpoint string) (e error) {
 	client := graphql.NewClient(endpoint, nil)
 
-	var argsQuery ArgsQuery
-	err := client.Query(context.Background(), &argsQuery, nil)
+	log.Println("querying", endpoint)
+
+	err := client.Query(context.Background(), &query, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println(argsQuery.__Schema)
+	log.Println("query executed")
+
+	schema := query.__Schema
+	log.Println(schema)
+
 	return err
 }
 
 func main() {
 	net_helpers.InitLogFile("scans", "graphql")
 
-	target := flag.String("target", "http://localhost:8080/graphql", "a Graphql API endpoint to probe")
+	target := flag.String("target", "http://localhost:8080/query", "a Graphql API endpoint to probe")
 	flag.Parse()
 
 	if *target == "" {
@@ -51,5 +56,5 @@ func main() {
 
 	log.Println("Probing", *target)
 
-	probe(*target)
+	Probe(*target)
 }
