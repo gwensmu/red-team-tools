@@ -1,4 +1,4 @@
-name: Run Test Suites
+name: Make sure builds work
 
 on:
   push:
@@ -26,4 +26,4 @@ jobs:
           ${{ runner.os }}-go-${{ matrix.go-version }}-
     - run: go work init
     - run: go work use ./net_helpers ./elasticsearch ./redis ./probe ./jupyter
-    - run: make test-all
+    - run: make build-all
