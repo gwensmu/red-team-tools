@@ -1,4 +1,4 @@
-name: CI for Elasticsearch Scanner
+name: Run Test Suites
 
 on:
   push:
@@ -16,11 +16,6 @@ jobs:
     - uses: actions/checkout@v3
     - uses: actions/cache@v3
       with:
-        # In order:
-        # * Module download cache
-        # * Build cache (Linux)
-        # * Build cache (Mac)
-        # * Build cache (Windows)
         path: |
           ~/go/pkg/mod
           ~/.cache/go-build
@@ -30,5 +25,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-${{ matrix.go-version }}-
     - run: go work init
-    - run: go work use ./elasticsearch
-    # - run: go test -v ./elasticsearch
+    - run: go work use ./net_helpers ./elasticsearch ./redis ./probe
+    - run: go test -v ./elasticsearch
+    - run: go test -v ./redis

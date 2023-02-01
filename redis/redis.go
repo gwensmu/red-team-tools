@@ -12,7 +12,6 @@ import (
 )
 
 const REDIS_DEFAULT_PORT = 6379
-const NO_DICE = "No dice"
 
 type RedisInstance struct {
 	Name    string
@@ -45,7 +44,7 @@ func GetKeys(host string) (probe.PublicService, error) {
 		log.Println("keys", iter.Val())
 	}
 	if err := iter.Err(); err != nil {
-		panic(err)
+		log.Print(err)
 	}
 
 	return redis_instance, nil
