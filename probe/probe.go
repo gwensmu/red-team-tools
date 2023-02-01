@@ -1,11 +1,20 @@
 package probe
 
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net_helpers"
+	"os"
+	"time"
+)
+
 type probe interface {
 	InitLogFile() error
-	ReadFlags() []string, int, error
+	ReadFlags() ([]string, int, error)
 	Probe() error
+	Worker()
 }
-
 type PublicService struct {
 	Name         string
 	Address      string
@@ -18,8 +27,10 @@ type PublicService struct {
 	}
 }
 
-func (cidrs []string, workerCount int, ) Probe() error {
-	for _, block := range cidrs_to_scan {
+type WorkerFunc func(addresses <-chan string, results chan PublicService)
+
+func Probe(cidrs []string, workerCount int, w WorkerFunc) error {
+	for _, block := range cidrs {
 		hosts, _ := net_helpers.Hosts(block)
 
 		log.Println("Scanning", len(hosts), "hosts in CIDR", block)
@@ -32,8 +43,8 @@ func (cidrs []string, workerCount int, ) Probe() error {
 		results := make(chan PublicService)
 		var public_instances []PublicService
 
-		for i := 0; i < *workerPtr; i++ {
-			go worker(addresses, results)
+		for i := 0; i < workerCount; i++ {
+			go w(addresses, results)
 		}
 
 		close(addresses)
@@ -50,6 +61,8 @@ func (cidrs []string, workerCount int, ) Probe() error {
 
 		fmt.Println("Found", len(public_instances), "public services")
 	}
+
+	return nil
 }
 
 func ReadFlags() ([]string, int, error) {
@@ -69,4 +82,16 @@ func ReadFlags() ([]string, int, error) {
 	}
 
 	return cidrs_to_scan, *workerPtr, nil
+}
+
+func InitLogFile(dir string) error {
+	filename := fmt.Sprintf("%s/scan-%s.log", dir, time.Now())
+	logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+
+	log.SetOutput(logFile)
+
+	return err
 }
