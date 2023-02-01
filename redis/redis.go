@@ -12,7 +12,6 @@ import (
 )
 
 const REDIS_DEFAULT_PORT = 6379
-const NO_DICE = "No dice"
 
 type RedisInstance struct {
 	Name    string
