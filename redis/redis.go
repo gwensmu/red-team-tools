@@ -45,7 +45,7 @@ func GetKeys(host string) (probe.PublicService, error) {
 		log.Println("keys", iter.Val())
 	}
 	if err := iter.Err(); err != nil {
-		panic(err)
+		log.Print(err)
 	}
 
 	return redis_instance, nil
