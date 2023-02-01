@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net_helpers"
 	"os"
 	"probe"
@@ -25,12 +24,6 @@ func Login(host string) (probe.PublicService, error) {
 	var es_cluster probe.PublicService
 	es_cluster.Address = host
 
-	_, err := http.NewRequest("GET", "http://"+host+":9200", nil)
-	if err != nil {
-		log.Print(err)
-		return es_cluster, err
-	}
-
 	cfg := elasticsearch.Config{
 		Addresses: []string{
 			"http://" + host + ":9200",
@@ -43,6 +36,7 @@ func Login(host string) (probe.PublicService, error) {
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Failed creating client: %s", err)
+		return es_cluster, err
 	}
 
 	indexes, err := GetIndexes(es, host)
