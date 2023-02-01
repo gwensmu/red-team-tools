@@ -1,33 +1,77 @@
 package main
 
 import (
-	"flag"
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"net_helpers"
 	"os"
-	"time"
+	"probe"
+
+	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 )
 
 const ES_DEFAULT_PORT = 9200
-const NO_DICE = "No dice"
 
-var logFileDir = "scans"
+// can you imagine? years of this
+const ES_DEFAULT_USERNAME = "elastic"
+const ES_DEFAULT_PASSWORD = "changeme"
 
-type ESCluster struct {
-	Name         string
-	Address      string
-	Cluster_Name string
-	ClusterUuid  string
-	Version      struct {
-		Number      string
-		BuildFlavor string
-		BuildType   string
+func Login(host string) (probe.PublicService, error) {
+	log.Println("Attempting to get cluster details for", host)
+
+	var es_cluster probe.PublicService
+	es_cluster.Address = host
+
+	_, err := http.NewRequest("GET", "http://"+host+":9200", nil)
+	if err != nil {
+		log.Print(err)
+		return es_cluster, err
+	}
+
+	cfg := elasticsearch.Config{
+		Addresses: []string{
+			"http://" + host + ":9200",
+			"http://" + host + ":9201",
+		},
+		Username: ES_DEFAULT_USERNAME,
+		Password: ES_DEFAULT_PASSWORD,
+	}
+
+	es, err := elasticsearch.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("Failed creating client: %s", err)
+	}
+
+	indexes, err := GetIndexes(es, host)
+	if err != nil {
+		log.Printf("Failed getting indexes: %s", err)
+		return es_cluster, err
+	} else {
+		log.Println(host + " has indexes:\n" + indexes)
+		return es_cluster, nil
 	}
 }
 
-func worker(addresses <-chan string, results chan ESCluster) {
-	var nilCluster = ESCluster{}
+func GetIndexes(es *elasticsearch.Client, host string) (string, error) {
+	res, err := esapi.CatIndicesRequest{Pretty: true}.Do(context.Background(), es)
+	if err != nil {
+		return fmt.Sprintf("Error getting indexes: %s", err), err
+	}
+
+	if res.Status() == "401" {
+		return fmt.Sprintf("401 Unauthorized: %s", host), err
+	}
+
+	defer res.Body.Close()
+
+	return res.String(), err
+}
+
+func Worker(addresses <-chan string, results chan probe.PublicService) {
+	var nilCluster = probe.PublicService{}
 
 	for ip := range addresses {
 
@@ -49,63 +93,18 @@ func worker(addresses <-chan string, results chan ESCluster) {
 	}
 }
 
-func initLogFile(dir string) {
-	filename := fmt.Sprintf("%s/elasticsearch-scan-%s.log", dir, time.Now())
-	logFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	log.SetOutput(logFile)
-}
-
 func main() {
-	initLogFile(logFileDir)
+	probe.InitLogFile("scans")
 
-	blockPtr := flag.String("block", "", "a IPv4 CIDR block to scan")
-	cloudProviderPtr := flag.String("cloud", "aws", "the cloud provider to scan (aws/gce)")
-	regionPtr := flag.String("region", "us-east1", "the region to scan")
-	workerPtr := flag.Int("workers", 20, "the number of workers to use")
-
-	flag.Parse()
-
-	var cidrs_to_scan []string
-
-	if *blockPtr != "" {
-		cidrs_to_scan = []string{*blockPtr}
-	} else {
-		cidrs_to_scan = net_helpers.GetCIDR(*cloudProviderPtr, *regionPtr)
+	cidrs_to_scan, workerCount, err := probe.ReadFlags()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	for _, block := range cidrs_to_scan {
-		hosts, _ := net_helpers.Hosts(block)
-
-		log.Println("Scanning", len(hosts), "hosts in CIDR", block)
-
-		addresses := make(chan string, len(hosts))
-		for _, host := range hosts {
-			addresses <- host
-		}
-
-		results := make(chan ESCluster)
-		var public_instances []ESCluster
-
-		for i := 0; i < *workerPtr; i++ {
-			go worker(addresses, results)
-		}
-
-		close(addresses)
-
-		for i := 0; i < len(hosts); i++ {
-			instance := <-results
-
-			if instance.Name != "" {
-				public_instances = append(public_instances, instance)
-			}
-		}
-
-		close(results)
-
-		fmt.Println("Found", len(public_instances), "public instances")
+	var workerHandler = probe.WorkerFunc(Worker)
+	err = probe.Probe(cidrs_to_scan, workerCount, workerHandler)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	os.Exit(0)
