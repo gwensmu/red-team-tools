@@ -25,5 +25,5 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-${{ matrix.go-version }}-
     - run: go work init
-    - run: go work use ./net_helpers ./elasticsearch ./redis ./probe ./jupyter
+    - run: go work use ./net_helpers ./elasticsearch ./redis ./probe ./jupyter ./graphql
     - run: make build-all
