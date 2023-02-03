@@ -1,44 +1,37 @@
 package main
 
 import (
-	"context"
+	"bytes"
 	"flag"
+	"io"
 	"log"
+	"net/http"
 	"net_helpers"
-
-	"github.com/hasura/go-graphql-client"
 )
 
-var query struct {
-	__Schema struct {
-		Types struct {
-			Name   string
-			Fields struct {
-				Name string
-				Args struct {
-					Name string
-					Type struct {
-						Name string
-					}
-				}
-			}
-		}
+var schemaQuery string = `{"query":"query {\n  __schema {\n      types { \n        name \n        fields { \n          name \n          args {\n          name \n            type {\n            \tname\n          }\n        } \n      }\n    } \n  }\n}"}`
+
+func sendQuery(endpoint string, query string) (result string, err error) {
+	response, e := http.Post(endpoint, "application/json", bytes.NewBuffer([]byte(query)))
+	if e != nil {
+		log.Fatal(err)
 	}
+
+	defer response.Body.Close()
+
+	resolved, err := io.ReadAll(response.Body)
+	schema := string(resolved)
+
+	return schema, err
 }
 
 func Probe(endpoint string) (e error) {
-	client := graphql.NewClient(endpoint, nil)
 
-	log.Println("querying", endpoint)
-
-	err := client.Query(context.Background(), &query, nil)
+	schema, err := sendQuery(endpoint, schemaQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("query executed")
-
-	schema := query.__Schema
 	log.Println(schema)
 
 	return err
