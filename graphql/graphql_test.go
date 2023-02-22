@@ -1,10 +1,37 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+var schema = `{
+	"data": {
+		"__schema": {
+			"types": [
+				{
+          "name": "SearchRequest",
+          "fields": null
+        },
+				{
+					"name": "User",
+					"fields": [
+						{
+							"name": "id",
+							"args": []
+						},
+						{
+							"name": "ssn",
+							"args": []
+						}
+					]
+				}
+			]
+		}
+	}
+}`
 
 func TestProbe(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -13,7 +40,7 @@ func TestProbe(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		w.Write([]byte(schema))
 	}))
 	defer server.Close()
 
@@ -41,35 +68,19 @@ func TestSendQuery(t *testing.T) {
 		t.Fatalf(`Probing horked`)
 	}
 
-	if result != `{"status":"ok"}` {
+	if result["status"] != "ok" {
 		t.Fatalf(`Expected to get {"status":"ok"}, got: %s`, result)
 	}
 }
 
 func TestLookForFieldsThatSeemSensitive(t *testing.T) {
-	schema := `{
-		"data": {
-			"__schema": {
-				"types": [
-					{
-						"name": "User",
-						"fields": [
-							{
-								"name": "id",
-								"args": []
-							},
-							{
-								"name": "ssn",
-								"args": []
-							}
-						]
-					}
-				]
-			}
-		}
-	}`
+	var jsonSchema map[string]interface{}
+	err := json.Unmarshal([]byte(schema), &jsonSchema)
+	if err != nil {
+		t.Fatalf("Test setup horked: %s", err)
+	}
 
-	fields := lookForFieldsThatSeemSensitive(schema)
+	fields := lookForFieldsThatSeemSensitive(jsonSchema)
 
 	if len(fields) != 1 {
 		t.Fatalf(`Expected to find 1 sensitive fields, got: %d`, len(fields))
