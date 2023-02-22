@@ -27,6 +27,19 @@ var schema = `{
 							"args": []
 						}
 					]
+				},
+				{
+					"name": "CoolCat",
+					"fields": [
+						{
+							"name": "id",
+							"args": []
+						},
+						{
+							"name": "whiskersCount",
+							"args": []
+						}
+					]
 				}
 			]
 		}
@@ -80,13 +93,9 @@ func TestLookForFieldsThatSeemSensitive(t *testing.T) {
 		t.Fatalf("Test setup horked: %s", err)
 	}
 
-	fields, sensitiveTypes := lookForFieldsThatSeemSensitive(jsonSchema)
+	sensitiveTypes := lookForFieldsThatSeemSensitive(jsonSchema)
 
-	if len(fields) != 1 {
-		t.Fatalf(`Expected to find 1 sensitive fields, got: %d`, len(fields))
-	}
-
-	if sensitiveTypes[0].(map[string]interface{})["name"] != "User" {
-		t.Fatalf(`Expected to find sensitive type "User", got: %s`, sensitiveTypes[0].(map[string]interface{})["name"])
+	if len(sensitiveTypes) != 1 {
+		t.Fatalf(`Expected to find 1 sensitive types, got: %d`, len(sensitiveTypes))
 	}
 }
