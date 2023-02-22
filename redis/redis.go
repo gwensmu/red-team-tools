@@ -8,7 +8,7 @@ import (
 	"os"
 	"probe"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 const REDIS_DEFAULT_PORT = 6379
