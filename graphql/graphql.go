@@ -10,6 +10,16 @@ import (
 )
 
 var schemaQuery string = `{"query":"query {\n  __schema {\n      types { \n        name \n        fields { \n          name \n          args {\n          name \n            type {\n            \tname\n          }\n        } \n      }\n    } \n  }\n}"}`
+var potentiallySensitiveFields []string = []string{"ssn", "tin"}
+
+func lookForFieldsThatSeemSensitive(schema string) (sensitiveFields []string) {
+	for _, field := range potentiallySensitiveFields {
+		if bytes.Contains([]byte(schema), []byte(field)) {
+			sensitiveFields = append(sensitiveFields, field)
+		}
+	}
+	return sensitiveFields
+}
 
 func sendQuery(endpoint string, query string) (result string, err error) {
 	response, e := http.Post(endpoint, "application/json", bytes.NewBuffer([]byte(query)))
@@ -32,7 +42,9 @@ func Probe(endpoint string) (e error) {
 		log.Fatal(err)
 	}
 
-	log.Println(schema)
+	if len(lookForFieldsThatSeemSensitive(schema)) > 0 {
+		log.Println("Found potentially sensitive fields in the schema:", lookForFieldsThatSeemSensitive(schema))
+	}
 
 	return err
 }
