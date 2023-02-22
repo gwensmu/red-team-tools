@@ -44,6 +44,8 @@ func Probe(endpoint string) (e error) {
 
 	if len(lookForFieldsThatSeemSensitive(schema)) > 0 {
 		log.Println("Found potentially sensitive fields in the schema:", lookForFieldsThatSeemSensitive(schema))
+	} else {
+		log.Println("No sensitive fields found in the schema")
 	}
 
 	return err
