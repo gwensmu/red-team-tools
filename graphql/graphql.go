@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 )
 
 var schemaQuery string = `{"query":"query {\n  __schema {\n      types { \n        name \n        fields { \n          name \n          args {\n          name \n            type {\n            \tname\n          }\n        } \n      }\n    } \n  }\n}"}`
-var potentiallySensitiveFields []string = []string{"ssn", "tin"}
+var potentiallySensitiveFields []string = []string{"ssn", "tin", "taxId"}
 
 func NestedKeys(m map[string]interface{}) (keys []string) {
 	for k, v := range m {
@@ -27,12 +28,14 @@ func NestedKeys(m map[string]interface{}) (keys []string) {
 	return keys
 }
 
-func lookForFieldsThatSeemSensitive(schema map[string]interface{}) (sensitiveFields []interface{}) {
+func lookForFieldsThatSeemSensitive(schema map[string]interface{}) (sensitiveFields []interface{}, typesWithSensitiveFields []interface{}) {
 	types := schema["data"].(map[string]interface{})["__schema"].(map[string]interface{})["types"].([]interface{})
 	if len(types) < 1 {
 		log.Fatal("No types found in the schema")
 	}
+
 	fieldNames := []string{}
+	var typesWithSensativeFields []interface{}
 
 	for _, graphqlType := range types {
 		fields := graphqlType.(map[string]interface{})["fields"]
@@ -41,13 +44,21 @@ func lookForFieldsThatSeemSensitive(schema map[string]interface{}) (sensitiveFie
 		}
 
 		for _, field := range fields.([]interface{}) {
-			fieldNames = append(fieldNames, field.(map[string]interface{})["name"].(string))
+			fieldName := field.(map[string]interface{})["name"].(string)
+			fieldNames = append(fieldNames, fieldName)
+
+			if len(intersect.Simple(fieldNames, potentiallySensitiveFields)) > 0 {
+				typesWithSensativeFields = append(typesWithSensativeFields, graphqlType)
+			}
 		}
 	}
 
+	log.Printf("Found %d fields in the schema", len(fieldNames))
+	log.Print(fieldNames)
+
 	matchedFields := intersect.Simple(fieldNames, potentiallySensitiveFields)
 
-	return matchedFields
+	return matchedFields, typesWithSensativeFields
 }
 
 func sendQuery(endpoint string, query string) (result map[string]interface{}, err error) {
@@ -72,6 +83,14 @@ func sendQuery(endpoint string, query string) (result map[string]interface{}, er
 	return jsonSchema, err
 }
 
+func PrettyPrint(v interface{}) (err error) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err == nil {
+		fmt.Println(string(b))
+	}
+	return
+}
+
 func Probe(endpoint string) (e error) {
 
 	schema, err := sendQuery(endpoint, schemaQuery)
@@ -79,8 +98,10 @@ func Probe(endpoint string) (e error) {
 		log.Fatal(err)
 	}
 
-	if len(lookForFieldsThatSeemSensitive(schema)) > 0 {
-		log.Println("Found potentially sensitive fields in the schema:", lookForFieldsThatSeemSensitive(schema))
+	sensativeFields, sensativeTypes := lookForFieldsThatSeemSensitive(schema)
+	if len(sensativeFields) > 0 {
+		log.Println("Found potentially sensitive fields in the schema:", sensativeFields)
+		log.Println("Types with potentially sensitive fields:", PrettyPrint(sensativeTypes))
 	} else {
 		log.Println("No sensitive fields found in the schema")
 	}

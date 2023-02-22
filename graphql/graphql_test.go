@@ -80,9 +80,13 @@ func TestLookForFieldsThatSeemSensitive(t *testing.T) {
 		t.Fatalf("Test setup horked: %s", err)
 	}
 
-	fields := lookForFieldsThatSeemSensitive(jsonSchema)
+	fields, sensitiveTypes := lookForFieldsThatSeemSensitive(jsonSchema)
 
 	if len(fields) != 1 {
 		t.Fatalf(`Expected to find 1 sensitive fields, got: %d`, len(fields))
+	}
+
+	if sensitiveTypes[0].(map[string]interface{})["name"] != "User" {
+		t.Fatalf(`Expected to find sensitive type "User", got: %s`, sensitiveTypes[0].(map[string]interface{})["name"])
 	}
 }
